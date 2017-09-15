@@ -1,0 +1,4 @@
+<resources>
+    <string moduleConfig="true" name="reactNativeCodePush_androidDeploymentKey">KMH9Oqqfi2bwi3NfYcXOyiItC5Zs81bf6189-2c2a-46a8-b3d8-afa24cb32523</string>
+    <string name="app_name">QRScanner</string>
+</resources>
