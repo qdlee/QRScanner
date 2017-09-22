@@ -5,28 +5,30 @@ import {
   Button,
   Clipboard,
   ToastAndroid,
-  TouchableNativeFeedback,
-  Linking
+  TouchableNativeFeedback
 } from 'react-native';
 import Camera from 'react-native-camera';
-import codePush from 'react-native-code-push';
 
 import s from './styles';
 
-class QRScanner extends Component {
+export default class QRScanner extends Component {
   constructor() {
     super();
     this.state = {
       showCamera: false,
-      qrContent: ''
+      qrContent: 'https://www.baidu.com'
     };
     this.onBarCodeRead = this.onBarCodeRead.bind(this);
     this.copyTxt = this.copyTxt.bind(this);
     this.openInBrowser = this.openInBrowser.bind(this);
     this.toggleShowCamera = this.toggleShowCamera.bind(this);
   }
+  static navigationOptions = {
+    title: '扫描二维码'
+  };
   render() {
     let view = null;
+
     if (this.state.showCamera) {
       view = (
         <Camera
@@ -66,7 +68,7 @@ class QRScanner extends Component {
               <View style={s.btnContainer}>
                 <TouchableNativeFeedback onPress={this.openInBrowser}>
                   <View style={s.btn}>
-                    <Text>浏览器打开</Text>
+                    <Text>打开链接</Text>
                   </View>
                 </TouchableNativeFeedback>
               </View>
@@ -105,17 +107,8 @@ class QRScanner extends Component {
     if (!this.state.qrContent) {
       return;
     }
-    const url = this.state.qrContent;
-    Linking.canOpenURL(url)
-      .then(supported => {
-        if (!supported) {
-          console.log("Can't handle url: " + url);
-        } else {
-          return Linking.openURL(url);
-        }
-      })
-      .catch(err => console.error('An error occurred', err));
+    const uri = this.state.qrContent;
+    const { navigate } = this.props.navigation;
+    navigate('Web', { uri, visible: true });
   }
 }
-
-export default codePush(QRScanner);

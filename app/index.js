@@ -1,10 +1,26 @@
 import { AppRegistry } from 'react-native';
-import { Navigation } from 'react-native-navigation';
-import { registerScreens } from './screens';
+import { StackNavigator } from 'react-navigation';
+import codePush from 'react-native-code-push';
+import { MenuContext } from 'react-native-popup-menu';
 
-Navigation.startSingleScreenApp({
-  screen: {
-    screen: 'qr.HomeScreen',
-    title: '扫描二维码'
+import HomeScreen from './screens/Home';
+import WebScreen from './screens/Web';
+
+const SimpleApp = codePush(
+  StackNavigator({
+    Home: { screen: HomeScreen },
+    Web: { screen: WebScreen }
+  })
+);
+
+export default class App extends Component {
+  render() {
+    return (
+      <MenuContext>
+        <SimpleApp />
+      </MenuContext>
+    );
   }
-});
+}
+
+AppRegistry.registerComponent('QRScanner', () => App);
