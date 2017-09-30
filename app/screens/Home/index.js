@@ -8,9 +8,14 @@ import {
   TouchableNativeFeedback,
   Share,
   FlatList,
-  Animated
+  Animated,
+  PanResponder
 } from 'react-native';
 import Camera from 'react-native-camera';
+
+import { get, set } from '../../utils/storage';
+
+import AnimatedView from '../../components/AnimatedView';
 
 import s from './styles';
 
@@ -21,7 +26,8 @@ export default class QRScanner extends Component {
       showCamera: false,
       qrContent: 'https://readhub.me/',
       active: 0,
-      moveAnim: new Animated.Value(0)
+      moveAnims: [new Animated.Value(0), new Animated.Value(0)],
+      historyList: []
     };
     this.onBarCodeRead = this.onBarCodeRead.bind(this);
     this.tapHistoryItem = this.tapHistoryItem.bind(this);
@@ -29,13 +35,15 @@ export default class QRScanner extends Component {
     this.openInBrowser = this.openInBrowser.bind(this);
     this.toggleShowCamera = this.toggleShowCamera.bind(this);
     this.share = this.share.bind(this);
+    this.getHistory = this.getHistory.bind(this);
+    this.setHistory = this.setHistory.bind(this);
   }
   static navigationOptions = {
     title: '扫描二维码'
   };
   render() {
     let view = null;
-    let { moveAnim } = this.state;
+    let { moveAnims } = this.state;
     if (this.state.showCamera) {
       view = (
         <Camera
@@ -55,22 +63,25 @@ export default class QRScanner extends Component {
     } else {
       view = (
         <View style={s.container}>
-          <Text style={s.instructions}>{this.state.qrContent}</Text>
+          <Text style={s.instructions}>
+            {this.state.qrContent}
+          </Text>
           <View style={s.history}>
             <Text style={s.sectionTitle}>
               历史记录
             </Text>
             <FlatList
               style={s.historyList}
-              data={[
-                { key: 'aaaaaaaaaaaaaaaaaaaaaaa' },
-                { key: 'bbbbbbbbbbbbbbbbbb' }
-              ]}
+              data={this.state.historyList}
               renderItem={({ item, index }) => (
-                <TouchableNativeFeedback onPress={this.tapHistoryItem}>
+                <TouchableNativeFeedback
+                  onPress={() => {
+                    this.tapHistoryItem(item.key);
+                  }}
+                >
                   <View style={[s.historyItem]}>
                     <Animated.View
-                      style={[s.historyItemInner, { left: moveAnim }]}
+                      style={[s.historyItemInner, { left: moveAnims[index] }]}
                     >
                       <View style={s.historyText}><Text>{item.key}</Text></View>
                       <View style={s.historyOp}><Text>删除</Text></View>
@@ -78,6 +89,15 @@ export default class QRScanner extends Component {
                   </View>
                 </TouchableNativeFeedback>
               )}
+            />
+          </View>
+          <View style={{ width: '100%', height: 100, position: 'relative' }}>
+            <AnimatedView
+              style={{
+                width: 50,
+                height: 50,
+                backgroundColor: '#45671e'
+              }}
             />
           </View>
 
@@ -119,21 +139,73 @@ export default class QRScanner extends Component {
     return <View style={s.container}>{view}</View>;
   }
 
-  tapHistoryItem() {
-    Animated.timing(this.state.moveAnim, {
-      toValue: -100,
-      duration: 1000
-    }).start();
+  componentWillMount() {
+    this.getHistory();
+    this._panResponder = PanResponder.create({
+      // Ask to be the responder:
+      onStartShouldSetPanResponder: (evt, gestureState) => true,
+      onStartShouldSetPanResponderCapture: (evt, gestureState) => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => true,
+      onMoveShouldSetPanResponderCapture: (evt, gestureState) => true,
 
-    // if (this.state.active !== -1) {
+      onPanResponderGrant: (evt, gestureState) => {
+        console.log(gestureState);
 
-    //   this.setState({
+        // The gesture has started. Show visual feedback so the user knows
 
-    //     active: -1
+        // what is happening!
 
-    //   });
+        // gestureState.d{x,y} will be set to zero now
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dx: this.state.moveAnims[0] }],
+        params => {
+          console.log(params);
+        }
+      ),
+      onPanResponderTerminationRequest: (evt, gestureState) => true,
+      onPanResponderRelease: (evt, gestureState) => {
+        // The user has released all touches while this view is the
+        // responder. This typically means a gesture has succeeded
+      },
+      onPanResponderTerminate: (evt, gestureState) => {
+        // Another component has become the responder, so this gesture
+        // should be cancelled
+      },
+      onShouldBlockNativeResponder: (evt, gestureState) => {
+        // Returns whether this component should block native components from becoming the JS
+        // responder. Returns true by default. Is currently only supported on android.
+        return true;
+      }
+    });
+  }
 
-    // }
+  getHistory() {
+    get('history-list').then(value => {
+      const historyList = JSON.parse(value);
+      if (historyList instanceof Array) {
+        this.setState({ historyList });
+      }
+    });
+  }
+
+  setHistory(item) {
+    if (this.state.historyList.indexOf(item) !== -1) {
+      return;
+    }
+    const historyList = this.state.historyList;
+    historyList.push({ key: item });
+    this.setState({ historyList });
+    set('history-list', JSON.stringify(historyList)).then(params => {
+      console.log(params);
+    });
+  }
+
+  tapHistoryItem(item) {
+    if (!item) {
+      return;
+    }
+    this.setState({ qrContent: item });
   }
 
   toggleShowCamera() {
@@ -157,6 +229,7 @@ export default class QRScanner extends Component {
     }
     Clipboard.setString(this.state.qrContent);
     ToastAndroid.show('已复制', ToastAndroid.SHORT);
+    this.setHistory(this.state.qrContent);
   }
 
   openInBrowser() {
@@ -166,6 +239,7 @@ export default class QRScanner extends Component {
     const uri = this.state.qrContent;
     const { navigate } = this.props.navigation;
     navigate('Web', { uri, visible: true });
+    this.setHistory(this.state.qrContent);
   }
 
   share() {
@@ -177,5 +251,6 @@ export default class QRScanner extends Component {
       title: '分享内容',
       message
     });
+    this.setHistory(this.state.qrContent);
   }
 }

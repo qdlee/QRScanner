@@ -73,8 +73,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.8)'
   },
   frame: {
-    width: 300,
-    height: 300,
+    width: 240,
+    height: 240,
     borderWidth: 2,
     borderColor: 'green'
   },
